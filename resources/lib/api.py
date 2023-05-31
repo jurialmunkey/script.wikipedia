@@ -87,10 +87,10 @@ class WikipediaAPI(RequestAPI):
     def __init__(self, language=None):
         lang = WIKI_LANGUAGE.get(language) or DEFAULT_WIKI_LANGUAGE
 
-        self._wiki_tag_link = get_infolabel('Skin.String(TMDbHelper.Wikipedia.Format.Link)') or WIKI_TAG_LINK
-        self._wiki_tag_bold = get_infolabel('Skin.String(TMDbHelper.Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
-        self._wiki_tag_emph = get_infolabel('Skin.String(TMDbHelper.Wikipedia.Format.Emphasis)') or WIKI_TAG_EMPH
-        self._wiki_tag_sups = get_infolabel('Skin.String(TMDbHelper.Wikipedia.Format.Superscript)') or WIKI_TAG_SUPS
+        self._wiki_tag_link = get_infolabel('Skin.String(Wikipedia.Format.Link)') or WIKI_TAG_LINK
+        self._wiki_tag_bold = get_infolabel('Skin.String(Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
+        self._wiki_tag_emph = get_infolabel('Skin.String(Wikipedia.Format.Emphasis)') or WIKI_TAG_EMPH
+        self._wiki_tag_sups = get_infolabel('Skin.String(Wikipedia.Format.Superscript)') or WIKI_TAG_SUPS
 
         super(WikipediaAPI, self).__init__(
             req_api_name='Wikipedia' if lang == DEFAULT_WIKI_LANGUAGE else f'Wikipedia_{lang}',
@@ -255,7 +255,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._fullurl = self._wiki.get_fullurl(self._title)
 
     def do_init(self):
-        xbmcgui.Window(10000).clearProperty('TMDbHelper.Wikipedia.Backdrop')
+        xbmcgui.Window(10000).clearProperty('Wikipedia.Backdrop')
         self.clearProperty('Backdrop')
         self._gui_name.setLabel(f'{self._title}')
         self._gui_text.setText(f'{self._overview}')
@@ -268,7 +268,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._overview_img = self.get_image(0)
         self._backdrop = self._wikimedia.get_backdrop(self._name) or ''
         if self._backdrop:
-            xbmcgui.Window(10000).setProperty('TMDbHelper.Wikipedia.Backdrop', self._backdrop)
+            xbmcgui.Window(10000).setProperty('Wikipedia.Backdrop', self._backdrop)
             self.setProperty('Backdrop', self._backdrop)
 
     def onInit(self):
@@ -375,12 +375,3 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         with ParallelThread(itms, _threaditem) as pt:
             item_queue = pt.queue
         self._index = [i for i in item_queue]
-
-
-
-# def do_wikipedia_gui(wikipedia, tmdb_type=None, **kwargs):
-#     ui = WikipediaGUI(
-#         'script-tmdbhelper-wikipedia.xml', ADDONPATH, 'default', '1080i',
-#         query=wikipedia, tmdb_type=tmdb_type)
-#     ui.doModal()
-#     del ui
