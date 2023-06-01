@@ -1,7 +1,7 @@
 import re
 import xbmc
 import xbmcgui
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from jurialmunkey.thread import ParallelThread
 from jurialmunkey.dialog import BusyDialog
 from jurialmunkey.reqapi import RequestAPI
@@ -186,6 +186,8 @@ class WikipediaAPI(RequestAPI):
 
         def _parse_table(p):
             for c in p.children:
+                if isinstance(c, Comment):
+                    continue
                 if c.name in ['style']:
                     continue
                 if c.name and any(x in ['mw-references-wrap', 'references-text', 'mw-editsection'] for x in c.get('class', [])):
