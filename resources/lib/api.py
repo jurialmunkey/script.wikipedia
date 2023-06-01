@@ -110,7 +110,6 @@ class WikipediaAPI(RequestAPI):
 
     def get_match(self, query, tmdb_type=None, match=''):
         affixes = AFFIXES.get(tmdb_type, {})
-        # regex = affixes.get('regex')
         affix = affixes.get('affix')
         _data = self.get_search(query, affix)
         items = [i['title'] for i in _data['query']['search']]
@@ -181,7 +180,6 @@ class WikipediaAPI(RequestAPI):
     def parse_text(self, data):
         raw_html = data['parse']['text']['*']
         soup = BeautifulSoup(raw_html, 'html.parser')
-        # return soup.prettify()
         text = []
 
         def _parse_table(p):
@@ -192,14 +190,10 @@ class WikipediaAPI(RequestAPI):
                     continue
                 if c.name and any(x in ['mw-references-wrap', 'references-text', 'mw-editsection'] for x in c.get('class', [])):
                     continue
-                # if c.name:
-                #     text.append(f'<{c.name}>')
                 if c.name in ['div', 'br']:
                     text.append(' ')
                 elif c.name in ['p', 'table', 'tr', 'li']:
                     text.append('\n\n')
-                # elif c.name in ['br']:
-                #     text.append('\n')
                 if c.name == 'img' and c.get('title'):
                     text.append(f'{c["title"]}')
                     continue
@@ -313,8 +307,6 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self.set_section(self._gui_list.getSelectedPosition())
 
     def do_click(self):
-        # if self.getFocusId() != WIKI_LIST_ID:
-        #     return
         x = self._gui_list.getSelectedPosition()
         links = self._wiki.parse_links(self._wiki.get_section(self._title, f'{x}'))
         if not links:
@@ -350,7 +342,6 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
     def set_section(self, x):
         try:
             text = self._index[x]
-            # name = self._sections[x]['line']
         except (TypeError, AttributeError, KeyError, IndexError):
             return
         self._gui_text.setText(f'{text}')
