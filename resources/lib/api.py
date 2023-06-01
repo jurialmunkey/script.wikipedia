@@ -5,6 +5,11 @@ from bs4 import BeautifulSoup
 from jurialmunkey.thread import ParallelThread
 from jurialmunkey.dialog import BusyDialog
 from jurialmunkey.reqapi import RequestAPI
+from jurialmunkey.plugin import KodiPlugin
+
+
+KODIPLUGIN = KodiPlugin('script.wikipedia')
+get_localized = KODIPLUGIN.get_localized
 
 ADDONDATA = 'special://profile/addon_data/script.wikipedia/'
 get_infolabel = xbmc.getInfoLabel
@@ -16,8 +21,9 @@ WIKI_LIST_ID = 9902
 WIKI_TEXT_ID = 9903
 WIKI_ATTR_ID = 9904
 WIKI_CCIM_ID = 9905
-WIKI_ATTRIBUTION = 'Text from Wikipedia under CC BY-SA 3.0 license.\n{}'
+WIKI_ATTRIBUTION = f'{get_localized(32001)}\n{{}}'
 WIKI_CCBYSA_IMG = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/CC_BY-SA_icon.svg/320px-CC_BY-SA_icon.svg.png'
+WIKI_UNABLE_TO_PARSE_TEXT = f'*** {get_localized(32000)} ***'
 
 ACTION_CLOSEWINDOW = (9, 10, 92, 216, 247, 257, 275, 61467, 61448,)
 ACTION_MOVEMENT = (1, 2, 3, 4, )
@@ -369,7 +375,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         def _threaditem(i):
             indx = i[1]
             text = self._wiki.parse_text(self._wiki.get_section(self._title, indx))
-            text = text or '*** Unable to parse information in this section ***'
+            text = text or WIKI_UNABLE_TO_PARSE_TEXT
             return text
 
         with ParallelThread(itms, _threaditem) as pt:
