@@ -307,6 +307,8 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self.set_section(self._gui_list.getSelectedPosition())
 
     def do_click(self):
+        if self.getFocusId() not in [WIKI_SCRL_ID, WIKI_LIST_ID]:
+            return
         x = self._gui_list.getSelectedPosition()
         links = self._wiki.parse_links(self._wiki.get_section(self._title, f'{x}'))
         if not links:
