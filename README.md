@@ -60,6 +60,7 @@ RunScript(script.wikipedia,wikipedia=SEARCHTERM)
 Searches wikipedia for the search term and provides a select dialog for user to select from results.
 
 Optionally can add a `tmdb_type=TYPE` param to tailor the search for more relevant results  
+Optionally can add a `xml_file=FILENAME` param to use alternate skin template  
 Optionally can add a `language=CODE` param to set language with two letter ISO 639-1 code
 
 Supported language codes: `it` `de` `fr` `es` `en`
