@@ -59,10 +59,13 @@ RunScript(script.wikipedia,wikipedia=SEARCHTERM)
 
 Searches wikipedia for the search term and provides a select dialog for user to select from results.
 
-Optionally can add a `tmdb_type=TYPE` param to tailor the search for more relevant results
+Optionally can add a `tmdb_type=TYPE` param to tailor the search for more relevant results  
+Optionally can add a `language=CODE` param to set language with two letter ISO 639-1 code
+
+Supported language codes: `it` `de` `fr` `es` `en`
 
 ```
-RunScript(script.wikipedia,wikipedia=Alien,tmdb_type=movie)
-RunScript(script.wikipedia,wikipedia=Chernobyl,tmdb_type=tv)
-RunScript(script.wikipedia,wikipedia=Matt Smith,tmdb_type=person)
+RunScript(script.wikipedia,wikipedia=Alien,tmdb_type=movie,language=en)
+RunScript(script.wikipedia,wikipedia=Chernobyl,tmdb_type=tv,language=en)
+RunScript(script.wikipedia,wikipedia=Matt Smith,tmdb_type=person,language=en)
 ```
