@@ -238,7 +238,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._index = []
         self._query = kwargs.get('query')
         self._tmdb_type = kwargs.get('tmdb_type')
-        self._wiki = WikipediaAPI()
+        self._wiki = WikipediaAPI(language=kwargs.get('language'))
         self._wikimedia = WikimediaAPI()
         self._backdrop = ''
         self._title = ''
