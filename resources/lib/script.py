@@ -33,7 +33,7 @@ class Script():
             lambda **kwargs: do_wikipedia_gui(**kwargs)}
 
     def router(self):
-        if not self.params:
+        if not self.params.get('wikipedia'):
             import xbmcgui
             self.params['wikipedia'] = xbmcgui.Dialog().input(heading='Wikipedia')
         routes_available = set(self.routing_table.keys())
