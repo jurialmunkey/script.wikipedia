@@ -122,6 +122,9 @@ class WikipediaAPI(RequestAPI):
         affix = affixes.get('affix')
         _data = self.get_search(query, affix)
         items = [i['title'] for i in _data['query']['search']]
+        if not items:
+            xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
+            return
         x = xbmcgui.Dialog().select('Wikipedia', items)
         if x == -1:
             return
