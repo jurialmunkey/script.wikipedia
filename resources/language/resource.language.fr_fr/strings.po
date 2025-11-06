@@ -19,7 +19,7 @@ msgstr ""
 #: /resources/lib/api.py
 msgctxt "#32001"
 msgid "Text from Wikipedia under CC BY-SA 3.0 license."
-msgstr "Texte tiré de Wikipédia sous licence CC BY-SA 3.0."
+msgstr "Texte extrait de Wikipédia sous licence CC BY-SA 3.0."
 
 #: /resources/lib/api.py
 msgctxt "#32000"
