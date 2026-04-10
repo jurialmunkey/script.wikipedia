@@ -35,3 +35,18 @@ msgstr ""
 msgctxt "#32003"
 msgid "No results found for {}"
 msgstr ""
+
+#: /resources/lib/script.py
+msgctxt "#32004"
+msgid "Wikipedia"
+msgstr ""
+
+#: /resources/lib/api.py
+msgctxt "#32005"
+msgid "Links"
+msgstr ""
+
+#: /resources/lib/api.py
+msgctxt "#32006"
+msgid "Overview"
+msgstr ""
