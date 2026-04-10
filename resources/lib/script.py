@@ -5,6 +5,7 @@ from lib.api import WikipediaGUI
 
 KODIPLUGIN = KodiPlugin('script.wikipedia')
 ADDONPATH = KODIPLUGIN._addon_path
+get_localized = KODIPLUGIN.get_localized
 
 
 def do_wikipedia_gui(wikipedia, tmdb_type=None, xml_file=None, language=None, **kwargs):
@@ -35,7 +36,7 @@ class Script():
     def router(self):
         if not self.params.get('wikipedia'):
             import xbmcgui
-            self.params['wikipedia'] = xbmcgui.Dialog().input(heading='Wikipedia')
+            self.params['wikipedia'] = xbmcgui.Dialog().input(heading=get_localized(32004))
         routes_available = set(self.routing_table.keys())
         params_given = set(self.params.keys())
         route_taken = set.intersection(routes_available, params_given).pop()

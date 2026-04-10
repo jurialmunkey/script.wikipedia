@@ -30,7 +30,7 @@ ACTION_CLOSEWINDOW = (9, 10, 92, 216, 247, 257, 275, 61467, 61448,)
 ACTION_MOVEMENT = (1, 2, 3, 4, )
 ACTION_SELECT = (7, )
 
-WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es'}
+WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es', 'zh': 'zh'}
 DEFAULT_WIKI_LANGUAGE = 'en'
 
 WIKI_TAG_LINK = '[COLOR=BF55DDFF]{}[/COLOR]'
@@ -125,7 +125,7 @@ class WikipediaAPI(RequestAPI):
         if not items:
             xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
             return
-        x = xbmcgui.Dialog().select('Wikipedia', items)
+        x = xbmcgui.Dialog().select(get_localized(32004), items)
         if x == -1:
             return
         return items[x]
@@ -165,7 +165,7 @@ class WikipediaAPI(RequestAPI):
 
     def get_all_sections(self, title):
         sections = self.get_sections(title)
-        sections = [{'line': 'Overview', 'index': '0', 'number': '0'}] + sections
+        sections = [{'line': get_localized(32006), 'index': '0', 'number': '0'}] + sections
         return sections
 
     def parse_links(self, data):
@@ -330,7 +330,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         if not links:
             return
         links = list(dict.fromkeys(links))
-        x = xbmcgui.Dialog().select('Links', links)
+        x = xbmcgui.Dialog().select(get_localized(32005), links)
         if x == -1:
             return
         self._history.append(self._title)
