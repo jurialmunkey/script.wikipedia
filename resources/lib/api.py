@@ -47,7 +47,7 @@ KODI_TO_WIKI_LANGUAGE = {
 
 
 def get_kodi_language():
-    """获取Kodi系统语言并映射到支持的Wikipedia语言"""
+    """Get the Kodi system language and map it to supported Wikipedia languages"""
     kodi_lang = xbmc.getLanguage()
     return KODI_TO_WIKI_LANGUAGE.get(kodi_lang, DEFAULT_WIKI_LANGUAGE)
 
