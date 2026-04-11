@@ -30,8 +30,26 @@ ACTION_CLOSEWINDOW = (9, 10, 92, 216, 247, 257, 275, 61467, 61448,)
 ACTION_MOVEMENT = (1, 2, 3, 4, )
 ACTION_SELECT = (7, )
 
-WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es'}
+WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es', 'zh': 'zh', 'zh_tw': 'zh-tw', 'ja': 'ja', 'ru': 'ru'}
 DEFAULT_WIKI_LANGUAGE = 'en'
+
+KODI_TO_WIKI_LANGUAGE = {
+    'Italian': 'it',
+    'German': 'de',
+    'English': 'en',
+    'French': 'fr',
+    'Spanish': 'es',
+    'Chinese (Simple)': 'zh',
+    'Chinese (Traditional)': 'zh-tw',
+    'Japanese': 'ja',
+    'Russian': 'ru',
+}
+
+
+def get_kodi_language():
+    """获取Kodi系统语言并映射到支持的Wikipedia语言"""
+    kodi_lang = xbmc.getLanguage()
+    return KODI_TO_WIKI_LANGUAGE.get(kodi_lang, DEFAULT_WIKI_LANGUAGE)
 
 WIKI_TAG_LINK = '[COLOR=BF55DDFF]{}[/COLOR]'
 WIKI_TAG_BOLD = '[B]{}[/B]'
@@ -96,7 +114,7 @@ class WikimediaAPI(RequestAPI):
 
 class WikipediaAPI(RequestAPI):
     def __init__(self, language=None):
-        lang = WIKI_LANGUAGE.get(language) or DEFAULT_WIKI_LANGUAGE
+        lang = WIKI_LANGUAGE.get(language) if language else get_kodi_language()
 
         self._wiki_tag_link = get_infolabel('Skin.String(Wikipedia.Format.Link)') or WIKI_TAG_LINK
         self._wiki_tag_bold = get_infolabel('Skin.String(Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
@@ -121,11 +139,14 @@ class WikipediaAPI(RequestAPI):
         affixes = AFFIXES.get(tmdb_type, {})
         affix = affixes.get('affix')
         _data = self.get_search(query, affix)
+        if not _data or 'query' not in _data or 'search' not in _data.get('query', {}):
+            xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
+            return
         items = [i['title'] for i in _data['query']['search']]
         if not items:
             xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
             return
-        x = xbmcgui.Dialog().select('Wikipedia', items)
+        x = xbmcgui.Dialog().select(get_localized(32004), items)
         if x == -1:
             return
         return items[x]
@@ -165,7 +186,7 @@ class WikipediaAPI(RequestAPI):
 
     def get_all_sections(self, title):
         sections = self.get_sections(title)
-        sections = [{'line': 'Overview', 'index': '0', 'number': '0'}] + sections
+        sections = [{'line': get_localized(32006), 'index': '0', 'number': '0'}] + sections
         return sections
 
     def parse_links(self, data):
@@ -330,7 +351,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         if not links:
             return
         links = list(dict.fromkeys(links))
-        x = xbmcgui.Dialog().select('Links', links)
+        x = xbmcgui.Dialog().select(get_localized(32005), links)
         if x == -1:
             return
         self._history.append(self._title)
