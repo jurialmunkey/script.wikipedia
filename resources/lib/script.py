@@ -7,12 +7,12 @@ KODIPLUGIN = KodiPlugin('script.wikipedia')
 ADDONPATH = KODIPLUGIN._addon_path
 
 
-def do_wikipedia_gui(wikipedia, tmdb_type=None, xml_file=None, language=None, **kwargs):
+def do_wikipedia_gui(wikipedia, tmdb_type=None, xml_file=None, **kwargs):
     if not wikipedia:
         return
     ui = WikipediaGUI(
         xml_file or 'script-wikipedia.xml', ADDONPATH, 'default', '1080i',
-        query=wikipedia, tmdb_type=tmdb_type, language=language)
+        query=wikipedia, tmdb_type=tmdb_type)
     ui.doModal()
     del ui
 
