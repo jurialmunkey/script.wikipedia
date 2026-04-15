@@ -30,8 +30,97 @@ ACTION_CLOSEWINDOW = (9, 10, 92, 216, 247, 257, 275, 61467, 61448,)
 ACTION_MOVEMENT = (1, 2, 3, 4, )
 ACTION_SELECT = (7, )
 
-WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es'}
 DEFAULT_WIKI_LANGUAGE = 'en'
+
+# Language mapping table, mapping Kodi language names to Wikipedia language codes
+LANGUAGE_MAP = {
+    'Afrikaans': 'af',
+    'Albanian': 'sq',
+    'Amharic': 'am',
+    'Arabic': 'ar',
+    'Armenian': 'hy',
+    'Asturian': 'ast',
+    'Azerbaijani': 'az',
+    'Basque': 'eu',
+    'Belarusian': 'be',
+    'Bengali': 'bn',
+    'Bosnian': 'bs',
+    'Bulgarian': 'bg',
+    'Burmese': 'my',
+    'Catalan': 'ca',
+    'Chinese (Simple)': 'zh',
+    'Chinese (Traditional)': 'zh-tw',
+    'Croatian': 'hr',
+    'Czech': 'cs',
+    'Danish': 'da',
+    'Dutch': 'nl',
+    'English': 'en',
+    'English (Australia)': 'en',
+    'English (Canada)': 'en',
+    'English (Ireland)': 'en',
+    'English (New Zealand)': 'en',
+    'English (South Africa)': 'en',
+    'English (UK)': 'en',
+    'English (US)': 'en',
+    'Esperanto': 'eo',
+    'Estonian': 'et',
+    'Filipino': 'tl',
+    'Finnish': 'fi',
+    'French': 'fr',
+    'Galician': 'gl',
+    'Georgian': 'ka',
+    'German': 'de',
+    'Greek': 'el',
+    'Gujarati': 'gu',
+    'Hebrew': 'he',
+    'Hindi': 'hi',
+    'Hungarian': 'hu',
+    'Icelandic': 'is',
+    'Indonesian': 'id',
+    'Irish': 'ga',
+    'Italian': 'it',
+    'Japanese': 'ja',
+    'Kannada': 'kn',
+    'Kazakh': 'kk',
+    'Khmer': 'km',
+    'Korean': 'ko',
+    'Kyrgyz': 'ky',
+    'Lao': 'lo',
+    'Latvian': 'lv',
+    'Lithuanian': 'lt',
+    'Macedonian': 'mk',
+    'Malay': 'ms',
+    'Malayalam': 'ml',
+    'Marathi': 'mr',
+    'Mongolian': 'mn',
+    'Nepali': 'ne',
+    'Norwegian': 'no',
+    'Persian': 'fa',
+    'Polish': 'pl',
+    'Portuguese': 'pt',
+    'Portuguese (Brazil)': 'pt-br',
+    'Punjabi': 'pa',
+    'Romanian': 'ro',
+    'Russian': 'ru',
+    'Serbian': 'sr',
+    'Sinhala': 'si',
+    'Slovak': 'sk',
+    'Slovenian': 'sl',
+    'Spanish': 'es',
+    'Spanish (Argentina)': 'es',
+    'Spanish (Mexico)': 'es',
+    'Swahili': 'sw',
+    'Swedish': 'sv',
+    'Tamil': 'ta',
+    'Telugu': 'te',
+    'Thai': 'th',
+    'Turkish': 'tr',
+    'Ukrainian': 'uk',
+    'Urdu': 'ur',
+    'Uzbek': 'uz',
+    'Vietnamese': 'vi',
+    'Welsh': 'cy'
+}
 
 WIKI_TAG_LINK = '[COLOR=BF55DDFF]{}[/COLOR]'
 WIKI_TAG_BOLD = '[B]{}[/B]'
@@ -96,13 +185,31 @@ class WikimediaAPI(RequestAPI):
 
 class WikipediaAPI(RequestAPI):
     def __init__(self, language=None):
-        lang = WIKI_LANGUAGE.get(language) or DEFAULT_WIKI_LANGUAGE
+        # Get Kodi language settings
+        kodi_language_name = xbmc.getLanguage()
+        kodi_language_iso = xbmc.getLanguage(format=xbmc.ISO_639_1)
+        
+        # First try to get language code using full language name
+        kodi_language = LANGUAGE_MAP.get(kodi_language_name)
+        
+        # If no mapping found, try using simplified language name
+        if not kodi_language:
+            # Try removing parenthesis content
+            simplified_name = kodi_language_name.split('(')[0].strip()
+            kodi_language = LANGUAGE_MAP.get(simplified_name)
+            
+            # If still no mapping found, use ISO 639-1 code
+            if not kodi_language:
+                kodi_language = kodi_language_iso
+        
+        # If no language parameter provided, use Kodi's language setting
+        lang = language or kodi_language or DEFAULT_WIKI_LANGUAGE
 
         self._wiki_tag_link = get_infolabel('Skin.String(Wikipedia.Format.Link)') or WIKI_TAG_LINK
         self._wiki_tag_bold = get_infolabel('Skin.String(Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
         self._wiki_tag_emph = get_infolabel('Skin.String(Wikipedia.Format.Emphasis)') or WIKI_TAG_EMPH
         self._wiki_tag_sups = get_infolabel('Skin.String(Wikipedia.Format.Superscript)') or WIKI_TAG_SUPS
-
+        
         super(WikipediaAPI, self).__init__(
             req_api_name='Wikipedia' if lang == DEFAULT_WIKI_LANGUAGE else f'Wikipedia_{lang}',
             req_api_url=f'https://{lang}.wikipedia.org/w/api.php')
@@ -121,6 +228,12 @@ class WikipediaAPI(RequestAPI):
         affixes = AFFIXES.get(tmdb_type, {})
         affix = affixes.get('affix')
         _data = self.get_search(query, affix)
+        
+        # Add error handling to ensure the plugin works even if API returns incorrect data structure
+        if not _data or 'query' not in _data or 'search' not in _data['query']:
+            xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
+            return
+        
         items = [i['title'] for i in _data['query']['search']]
         if not items:
             xbmcgui.Dialog().ok(get_localized(32002), get_localized(32003).format(f'{query}'))
@@ -190,6 +303,10 @@ class WikipediaAPI(RequestAPI):
         return links
 
     def parse_text(self, data):
+        # Add error handling to ensure the method works even if API returns incorrect data structure
+        if not data or 'parse' not in data or 'text' not in data['parse'] or '*' not in data['parse']['text']:
+            return WIKI_UNABLE_TO_PARSE_TEXT
+        
         raw_html = data['parse']['text']['*']
         soup = BeautifulSoup(raw_html, 'html.parser')
         text = []
@@ -250,7 +367,8 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._index = []
         self._query = kwargs.get('query')
         self._tmdb_type = kwargs.get('tmdb_type')
-        self._wiki = WikipediaAPI(language=kwargs.get('language'))
+        # Don't pass language parameter, let WikipediaAPI automatically use Kodi's language setting
+        self._wiki = WikipediaAPI()
         self._wikimedia = WikimediaAPI()
         self._backdrop = ''
         self._title = ''
@@ -262,6 +380,11 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
     def do_setup(self, title=None):
         self._title = title or self._wiki.get_match(self._query, self._tmdb_type)
         if not self._title:
+            # Ensure all necessary attributes are initialized even without a title
+            self._name = ''
+            self._overview = ''
+            self._sections = []
+            self._fullurl = ''
             return
         self._name = title or self._title
         self._overview = self._wiki.parse_text(self._wiki.get_section(self._title, '0'))
@@ -293,6 +416,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._gui_ccim = self.getControl(WIKI_CCIM_ID)
         if not self._title:
             self.close()
+            return
         self.do_init()
 
     def onAction(self, action):
