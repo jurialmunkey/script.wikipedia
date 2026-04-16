@@ -136,7 +136,7 @@ class WikipediaAPI(RequestAPI):
     def __init__(self, language=None):
 
         if not language or language not in self.wikipedia_languages:
-            language = DEFAULT_WIKI_LANGUAGE
+            language = KODIPLUGIN.get_setting('language', 'str') or DEFAULT_WIKI_LANGUAGE
 
         self._wiki_tag_link = get_infolabel('Skin.String(Wikipedia.Format.Link)') or WIKI_TAG_LINK
         self._wiki_tag_bold = get_infolabel('Skin.String(Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
