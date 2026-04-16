@@ -6,6 +6,7 @@ from jurialmunkey.thread import ParallelThread
 from jurialmunkey.dialog import BusyDialog
 from jurialmunkey.reqapi import RequestAPI
 from jurialmunkey.plugin import KodiPlugin
+from jurialmunkey.ftools import cached_property
 
 USER_AGENT = xbmc.getUserAgent()
 
@@ -30,7 +31,6 @@ ACTION_CLOSEWINDOW = (9, 10, 92, 216, 247, 257, 275, 61467, 61448,)
 ACTION_MOVEMENT = (1, 2, 3, 4, )
 ACTION_SELECT = (7, )
 
-WIKI_LANGUAGE = {'it': 'it', 'de': 'de', 'en': 'en', 'fr': 'fr', 'es': 'es'}
 DEFAULT_WIKI_LANGUAGE = 'en'
 
 WIKI_TAG_LINK = '[COLOR=BF55DDFF]{}[/COLOR]'
@@ -94,9 +94,49 @@ class WikimediaAPI(RequestAPI):
                     return i.get('url')
 
 
+class WikimediaMetaAPI(RequestAPI):
+    def __init__(self):
+        super(WikimediaMetaAPI, self).__init__(
+            req_api_name='WikimediaMeta',
+            req_api_url='https://meta.wikimedia.org/w/api.php')
+
+    def get_request_lc(self, *args, **kwargs):
+        kwargs['headers'] = {'User-Agent': USER_AGENT}
+        return super().get_request_lc(*args, **kwargs)
+
+
+class WikipediaLanguagesAPI(WikimediaMetaAPI):
+    @cached_property
+    def sitematrix(self):
+        return self.get_request_lc(action='sitematrix', format='json')['sitematrix']
+
+    @cached_property
+    def sites(self):
+        return tuple((v for v in self.sitematrix.values() if isinstance(v, dict)))
+
+    def set_language_item(self, item, site):
+        data = {k: v for k, v in item.items() if k != 'site'}
+        data.update({f'site_{k}': v for k, v in site.items()})
+        return data
+
+    def get_languages_site_filter(self, **kwargs):
+        return {
+            item['code']: self.set_language_item(item, site)
+            for item in self.sites
+            for site in item['site']
+            if all(site[k] == v for k, v in kwargs.items())
+        }
+
+    @cached_property
+    def all_wikipedia_languages(self):
+        return self.get_languages_site_filter(sitename='Wikipedia')
+
+
 class WikipediaAPI(RequestAPI):
     def __init__(self, language=None):
-        lang = WIKI_LANGUAGE.get(language) or DEFAULT_WIKI_LANGUAGE
+
+        if not language or language not in self.wikipedia_languages:
+            language = DEFAULT_WIKI_LANGUAGE
 
         self._wiki_tag_link = get_infolabel('Skin.String(Wikipedia.Format.Link)') or WIKI_TAG_LINK
         self._wiki_tag_bold = get_infolabel('Skin.String(Wikipedia.Format.Bold)') or WIKI_TAG_BOLD
@@ -104,8 +144,12 @@ class WikipediaAPI(RequestAPI):
         self._wiki_tag_sups = get_infolabel('Skin.String(Wikipedia.Format.Superscript)') or WIKI_TAG_SUPS
 
         super(WikipediaAPI, self).__init__(
-            req_api_name='Wikipedia' if lang == DEFAULT_WIKI_LANGUAGE else f'Wikipedia_{lang}',
-            req_api_url=f'https://{lang}.wikipedia.org/w/api.php')
+            req_api_name='Wikipedia' if language == DEFAULT_WIKI_LANGUAGE else f'Wikipedia_{language}',
+            req_api_url=f'https://{language}.wikipedia.org/w/api.php')
+
+    @cached_property
+    def wikipedia_languages(self):
+        return WikipediaLanguagesAPI().all_wikipedia_languages
 
     def get_request_lc(self, *args, **kwargs):
         kwargs['headers'] = {'User-Agent': USER_AGENT}
