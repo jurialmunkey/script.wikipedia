@@ -129,7 +129,7 @@ class WikipediaLanguagesAPI(WikimediaMetaAPI):
 
     @cached_property
     def all_wikipedia_languages(self):
-        return self.get_languages_site_filter(sitename='Wikipedia')
+        return self.get_languages_site_filter(code='wiki')
 
 
 class WikipediaAPI(RequestAPI):
