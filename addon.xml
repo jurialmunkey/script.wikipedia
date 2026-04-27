@@ -11,7 +11,9 @@ provider-name="jurialmunkey">
 <extension point="xbmc.python.script" library="resources/script.py" />
 <extension point="xbmc.addon.metadata">
   <summary lang="en_GB">Access Wikipedia via Kodi</summary>
+  <summary lang="zh_CN">通过 Kodi 访问维基百科</summary>
   <description lang="en_GB">Access Wikipedia via Kodi</description>
+  <description lang="zh_CN">通过 Kodi 访问维基百科</description>
   <license>GPL-3.0-or-later</license>
   <assets>
     <icon>icon.png</icon>
