@@ -337,6 +337,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._gui_ccim = self.getControl(WIKI_CCIM_ID)
         if not self._title:
             self.close()
+            return
         self.do_init()
 
     def onAction(self, action):
