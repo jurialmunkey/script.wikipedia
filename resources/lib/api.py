@@ -7,7 +7,7 @@ from jurialmunkey.reqapi import RequestAPI
 from jurialmunkey.plugin import KodiPlugin
 from jurialmunkey.ftools import cached_property
 
-USER_AGENT = f'Wikipedia for Kodi/0.1.2 (https://github.com/jurialmunkey/script.wikipedia jurialmunkey@kodi.tv) {xbmc.getUserAgent()}'
+USER_AGENT = f'Wikipedia for Kodi/0.2.0 (https://github.com/jurialmunkey/script.wikipedia jurialmunkey@kodi.tv) {xbmc.getUserAgent()}'
 
 KODIPLUGIN = KodiPlugin('script.wikipedia')
 get_localized = KODIPLUGIN.get_localized
