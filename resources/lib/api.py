@@ -2,13 +2,12 @@ import re
 import xbmc
 import xbmcgui
 from bs4 import BeautifulSoup, Comment
-from jurialmunkey.thread import ParallelThread
 from jurialmunkey.dialog import BusyDialog
 from jurialmunkey.reqapi import RequestAPI
 from jurialmunkey.plugin import KodiPlugin
 from jurialmunkey.ftools import cached_property
 
-USER_AGENT = xbmc.getUserAgent()
+USER_AGENT = f'Wikipedia for Kodi/0.2.0 (https://github.com/jurialmunkey/script.wikipedia jurialmunkey@kodi.tv) {xbmc.getUserAgent()}'
 
 KODIPLUGIN = KodiPlugin('script.wikipedia')
 get_localized = KODIPLUGIN.get_localized
@@ -55,7 +54,78 @@ AFFIXES = {
 }
 
 
-class WikimediaAPI(RequestAPI):
+class RequestWikiAPI(RequestAPI):
+
+    exit = False
+    rate_limiter = 0
+
+    def get_simple_api_request(self, request=None, postdata=None, headers=None, method=None):
+        if method == 'delete':
+            return self.session.delete(request, data=postdata, headers=headers, timeout=self.timeout)
+        if method == 'put':
+            return self.session.put(request, data=postdata, headers=headers, timeout=self.timeout)
+        if method == 'json':
+            return self.session.post(request, json=postdata, headers=headers, timeout=self.timeout)
+        if method == 'json_delete':
+            return self.session.delete(request, json=postdata, headers=headers, timeout=self.timeout)
+        if postdata or method == 'post':  # If pass postdata assume we want to post
+            return self.session.post(request, data=postdata, headers=headers, timeout=self.timeout)
+        return self.session.get(request, headers=headers, timeout=self.timeout)
+
+    def do_rate_limit_wait(self, retry_after, pdialog=True):
+        self.rate_limiter = int(retry_after)
+        pdialog = xbmcgui.DialogProgressBG() if pdialog else None
+        pdialog.create(heading=f'Wikipedia') if pdialog else None
+        monitor = xbmc.Monitor()
+        waiting = self.rate_limiter
+        cadence = 0.25
+
+        while self.rate_limiter > 0 and not monitor.abortRequested() and not self.exit:
+            pdialog.update(
+                int((self.rate_limiter / waiting) * 100),
+                message=f'Ratelimited - waiting {self.rate_limiter} seconds'
+            ) if pdialog else None
+            monitor.waitForAbort(cadence)
+            self.rate_limiter -= cadence
+
+        pdialog.close() if pdialog else None
+        return bool(not monitor.abortRequested() and not self.exit)
+
+    def get_api_request(self, request=None, postdata=None, headers=None, method=None):
+        """
+        Make the request to the API by passing a url request string
+        """
+
+        if self.rate_limiter > 0 and not self.do_rate_limit_wait(self.rate_limiter, pdialog=False):
+            return
+
+        # Get response
+        response = self.get_simple_api_request(request, postdata, headers, method)
+        if response is None or not response.status_code:
+            return
+
+        # Too many requests
+        if response.status_code == 429:
+            if not self.do_rate_limit_wait(response.headers['retry-after']):
+                return
+            return self.get_api_request(request, postdata, headers, method)
+
+        # Other error
+        if response.status_code >= 400:
+            self.kodi_log([
+                f'HTTP Error Code: {response.status_code}',
+                f'\nRequest: {request.replace(self.req_api_key, "") if request else None}',
+                f'\nPostdata: {postdata}' if postdata else '',
+                f'\nHeaders: {headers}' if headers else '',
+                f'\nResponse: {response}' if response else ''
+            ], 2 if response.status_code == 404 else 1)
+            return
+
+        # Return our response
+        return response
+
+
+class WikimediaAPI(RequestWikiAPI):
     def __init__(self):
         super(WikimediaAPI, self).__init__(
             req_api_name='Wikimedia',
@@ -94,7 +164,7 @@ class WikimediaAPI(RequestAPI):
                     return i.get('url')
 
 
-class WikimediaMetaAPI(RequestAPI):
+class WikimediaMetaAPI(RequestWikiAPI):
     def __init__(self):
         super(WikimediaMetaAPI, self).__init__(
             req_api_name='WikimediaMeta',
@@ -132,7 +202,7 @@ class WikipediaLanguagesAPI(WikimediaMetaAPI):
         return self.get_languages_site_filter(code='wiki')
 
 
-class WikipediaAPI(RequestAPI):
+class WikipediaAPI(RequestWikiAPI):
     def __init__(self, language=None):
 
         if not language or language not in self.wikipedia_languages:
@@ -198,14 +268,26 @@ class WikipediaAPI(RequestAPI):
             return ''
         return data
 
+    @cached_property
+    def section_cache(self):
+        return {}
+
     def get_section(self, title, section_index):
+        try:
+            return self.section_cache[title][section_index]
+        except KeyError:
+            pass
         params = {
             'action': 'parse', 'page': title, 'format': 'json', 'prop': 'text',
             'disabletoc': True, 'section': section_index, 'redirects': '',
             'disablelimitreport': True,
             'disableeditsection': True,
             'mobileformat': True}
-        return self.get_request_lc(**params)
+        data = self.get_request_lc(**params)
+        if not data:
+            return
+        self.section_cache.setdefault(title, {})[section_index] = data
+        return data
 
     def get_all_sections(self, title):
         sections = self.get_sections(title)
@@ -289,45 +371,154 @@ class WikipediaAPI(RequestAPI):
         return text
 
 
+class WikipediaGUIMeta:
+
+    def __init__(self, language=None):
+        self.language = language
+
+    def close(self):
+        self.wikipedia.exit = True
+        self.wikimedia.exit = True
+        del self.wikipedia
+        del self.wikimedia
+
+    @cached_property
+    def wikipedia(self):
+        return WikipediaAPI(language=self.language)
+
+    @cached_property
+    def wikimedia(self):
+        return WikimediaAPI()
+
+    def get_title(self, query, tmdb_type):
+        return self.wikipedia.get_match(query, tmdb_type)
+
+    @cached_property
+    def overview(self):
+        if not self.title:
+            return
+        data = self.wikipedia.get_section(self.title, '0')
+        return self.wikipedia.parse_text(data)
+
+    @cached_property
+    def sections(self):
+        if not self.title:
+            return
+        return self.wikipedia.get_all_sections(self.title)
+
+    @cached_property
+    def full_url(self):
+        if not self.title:
+            return
+        return self.wikipedia.get_fullurl(self.title)
+
+    @staticmethod
+    def get_configured_section(section):
+        name = section.get('line')
+        indx = section.get('index')
+        name = re.sub(r'<.*>', '', name)
+        numb = section.get('number')
+        name = f"{'    ' if '.' in numb else ''}{numb} {name}"
+        return (name, indx)
+
+    @cached_property
+    def configured_sections(self):
+        return tuple((
+            (name, indx) for name, indx in (
+                self.get_configured_section(section)
+                for section in self.sections
+            ) if name and indx
+        ))
+
+    @cached_property
+    def listitems(self):
+        return tuple((xbmcgui.ListItem(name) for name, indx in self.configured_sections))
+
+    def get_image(self, x):
+        try:
+            data = self.wikipedia.get_section(self.title, f'{x}')
+            imgs = self.wikipedia.parse_image(data)
+        except (TypeError, AttributeError, KeyError, IndexError):
+            return
+        if not imgs:
+            return
+        for img in imgs:
+            if int(img.get('width', 100)) < 32:
+                continue
+            if int(img.get('height', 100)) < 32:
+                continue
+            return img
+
+    @cached_property
+    def overview_img(self):
+        return self.get_image(0)
+
+    @cached_property
+    def backdrop(self):
+        return self.wikimedia.get_backdrop(self.title)
+
+    def get_links(self, x):
+        data = self.wikipedia.get_section(self.title, f'{x}')
+        return self.wikipedia.parse_links(data)
+
+    def get_section(self, x):
+        # indx = i[1]
+        data = self.wikipedia.get_section(self.title, f'{x}')
+        text = self.wikipedia.parse_text(data)
+        text = text or WIKI_UNABLE_TO_PARSE_TEXT
+        return text
+
+
 class WikipediaGUI(xbmcgui.WindowXMLDialog):
-    def __init__(self, *args, **kwargs):
-        self._index = []
-        self._query = kwargs.get('query')
-        self._tmdb_type = kwargs.get('tmdb_type')
-        self._wiki = WikipediaAPI(language=kwargs.get('language'))
-        self._wikimedia = WikimediaAPI()
-        self._backdrop = ''
-        self._title = ''
-        self._overview_img = ''
-        self._history = []
-        with BusyDialog():
-            self.do_setup()
+    def __init__(self, *args, query=None, tmdb_type=None, language=None, **kwargs):
+        self.query = query
+        self.tmdb_type = tmdb_type
+        self.language = language
+        self.do_setup()
 
     def do_setup(self, title=None):
-        self._title = title or self._wiki.get_match(self._query, self._tmdb_type)
-        if not self._title:
-            return
-        self._name = title or self._title
-        self._overview = self._wiki.parse_text(self._wiki.get_section(self._title, '0'))
-        self._sections = self._wiki.get_all_sections(self._title)
-        self._fullurl = self._wiki.get_fullurl(self._title)
+        with BusyDialog():
+            self.gui_meta = WikipediaGUIMeta(self.language)
+            self.gui_meta.title = title or self.gui_meta.get_title(self.query, self.tmdb_type)
+            if not self.gui_meta.title:
+                return
+            # Initialise some cached properties
+            self.gui_meta.overview
+            self.gui_meta.sections
+            self.gui_meta.full_url
+
+    @cached_property
+    def history(self):
+        return []
 
     def do_init(self):
         xbmcgui.Window(10000).clearProperty('Wikipedia.Backdrop')
         self.clearProperty('Backdrop')
-        self._gui_name.setLabel(f'{self._title}')
-        self._gui_text.setText(f'{self._overview}')
-        self._gui_attr.setText(WIKI_ATTRIBUTION.format(self._fullurl))
+
+        # Set basic details
+        self._gui_name.setLabel(f'{self.gui_meta.title}')
+        self._gui_text.setText(f'{self.gui_meta.overview}')
+        self._gui_attr.setText(WIKI_ATTRIBUTION.format(self.gui_meta.full_url))
         self._gui_ccim.setImage(WIKI_CCBYSA_IMG)
+
         self.clearProperty('Image')
-        self.set_sections()
+
+        # Set Sections
+        self._gui_list.reset()
+        self._gui_list.addItems(list(self.gui_meta.listitems))
+
+        # Set focus on list first item
         self.setFocusId(WIKI_LIST_ID)
         self.set_section(0)
-        self._overview_img = self.get_image(0)
-        self._backdrop = self._wikimedia.get_backdrop(self._name) or ''
-        if self._backdrop:
-            xbmcgui.Window(10000).setProperty('Wikipedia.Backdrop', self._backdrop)
-            self.setProperty('Backdrop', self._backdrop)
+
+        # Set backdrop from wikimedia
+        self.set_backdrop()
+
+    def set_backdrop(self):
+        if not self.gui_meta.backdrop:
+            return
+        xbmcgui.Window(10000).setProperty('Wikipedia.Backdrop', self.gui_meta.backdrop)
+        self.setProperty('Backdrop', self.gui_meta.backdrop)
 
     def onInit(self):
         self._gui_name = self.getControl(WIKI_NAME_ID)
@@ -335,7 +526,7 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
         self._gui_text = self.getControl(WIKI_TEXT_ID)
         self._gui_attr = self.getControl(WIKI_ATTR_ID)
         self._gui_ccim = self.getControl(WIKI_CCIM_ID)
-        if not self._title:
+        if not self.gui_meta.title:
             self.close()
         self.do_init()
 
@@ -355,10 +546,10 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
     def do_close(self):
         if self.getFocusId() == WIKI_SCRL_ID:
             return self.setFocusId(WIKI_LIST_ID)
-        if not self._history:  # No history so close
+        if not self.history:  # No history so close
+            self.gui_meta.close()
             return self.close()
-        with BusyDialog():  # History so go back instead
-            self.do_setup(self._history.pop())
+        self.do_setup(self.history.pop())  # History so go back instead
         self.do_init()
 
     def do_scroll(self):
@@ -369,70 +560,31 @@ class WikipediaGUI(xbmcgui.WindowXMLDialog):
     def do_click(self):
         if self.getFocusId() not in [WIKI_SCRL_ID, WIKI_LIST_ID]:
             return
-        x = self._gui_list.getSelectedPosition()
-        links = self._wiki.parse_links(self._wiki.get_section(self._title, f'{x}'))
+
+        links = self.gui_meta.get_links(self._gui_list.getSelectedPosition())
         if not links:
             return
+
         links = list(dict.fromkeys(links))
         x = xbmcgui.Dialog().select('Links', links)
         if x == -1:
             return
-        self._history.append(self._title)
-        with BusyDialog():
-            self.do_setup(links[x])
+
+        self.history.append(self.gui_meta.title)
+        self.do_setup(links[x])
         self.do_init()
 
-    def get_image(self, x):
-        try:
-            imgs = self._wiki.parse_image(self._wiki.get_section(self._title, f'{x}'))
-        except (TypeError, AttributeError, KeyError, IndexError):
+    def set_image(self, x):
+        data = self.gui_meta.get_image(x)
+        data = data or self.gui_meta.overview_img
+        if not data:
             return
-        if not imgs:
-            return
-        for img in imgs:
-            if int(img.get('width', 100)) < 32:
-                continue
-            if int(img.get('height', 100)) < 32:
-                continue
-            return img
-
-    def set_image(self, img=None):
-        img = img or self._overview_img
-        self.setProperty('Image', f'https:{img.get("src")}')
-        self.setProperty('ImageText', f'{img.get("title") or img.get("alt")}')
+        self.setProperty('Image', f'https:{data.get("src")}')
+        self.setProperty('ImageText', f'{data.get("title") or data.get("alt")}')
 
     def set_section(self, x):
-        try:
-            text = self._index[x]
-        except (TypeError, AttributeError, KeyError, IndexError):
+        text = self.gui_meta.get_section(x) if x else None
+        if not text:
             return
         self._gui_text.setText(f'{text}')
-        self.set_image(self.get_image(x))
-
-    def set_sections(self):
-        self._index = []
-        self._exit = False
-        itms = []
-        for section in self._sections:
-            if self._exit:
-                break
-            name = section.get('line')
-            indx = section.get('index')
-            name = re.sub(r'<.*>', '', name)
-            numb = section.get('number')
-            name = f"{'    ' if '.' in numb else ''}{numb} {name}"
-            if not name or not indx:
-                continue
-            itms.append((name, indx,))
-        self._gui_list.reset()
-        self._gui_list.addItems([xbmcgui.ListItem(i) for i, j in itms])
-
-        def _threaditem(i):
-            indx = i[1]
-            text = self._wiki.parse_text(self._wiki.get_section(self._title, indx))
-            text = text or WIKI_UNABLE_TO_PARSE_TEXT
-            return text
-
-        with ParallelThread(itms, _threaditem) as pt:
-            item_queue = pt.queue
-        self._index = [i for i in item_queue]
+        self.set_image(x)
