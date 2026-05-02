@@ -458,7 +458,7 @@ class WikipediaGUIMeta:
         return self.wikimedia.get_backdrop(self.title)
 
     def get_links(self, x):
-        data = self.wikipedia.get_section(self.title, )
+        data = self.wikipedia.get_section(self.title, f'{x}')
         return self.wikipedia.parse_links(data)
 
     def get_section(self, x):
