@@ -1,0 +1,37 @@
+# XBMC Media Center language file
+# Addon Name: Skin Variables
+# Addon id: script.skinvariables
+# Addon Provider: jurialmunkey
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC-Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: 2026-05-16 21:33+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: jamal2362\n"
+"Language-Team: DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+#: /resources/lib/api.py
+msgctxt "#32001"
+msgid "Text from Wikipedia under CC BY-SA 3.0 license."
+msgstr "Text aus Wikipedia unter der Lizenz CC BY-SA 3.0."
+
+#: /resources/lib/api.py
+msgctxt "#32000"
+msgid "Unable to parse information in this section"
+msgstr "Die Informationen in diesem Abschnitt können nicht verarbeitet werden"
+
+#: /resources/lib/api.py
+msgctxt "#32002"
+msgid "No results"
+msgstr "Keine Ergebnisse"
+
+#: /resources/lib/api.py
+msgctxt "#32003"
+msgid "No results found for {}"
+msgstr "Es wurden keine Ergebnisse für {} gefunden"
